@@ -108,7 +108,7 @@ describe('jsonld-signatures', () => {
     expect(result.verified).toBeTruthy()
   })
 
-  it.skip('throws when there is an unmapped type string', async () => {
+  it('throws when there is an unmapped type string', async () => {
     expect.assertions(1)
 
     // Should throw due to an unmapped type value
@@ -129,7 +129,7 @@ describe('jsonld-signatures', () => {
   })
 
   describe('does not verify a credential that has been modified', () => {
-    it.skip('(type)', async () => {
+    it('(adding unmapped type)', async () => {
       expect.assertions(1)
 
       const signed = await jsigs.sign({...credential}, {
@@ -146,6 +146,39 @@ describe('jsonld-signatures', () => {
       })
 
       const result = await jsigs.verify({...signed, type: [...signed.type, 'OtherType']}, {
+        suite: new Secp256k1Signature({
+          key: new Secp256k1Key({
+            id: signed.proof.verificationMethod,
+            controller: signed.issuer,
+            publicKeyHex: keys.primaryKey.publicKey,
+          }),
+        }),
+        documentLoader,
+        purpose: new AssertionProofPurpose({controller: didDoc}),
+        compactProof: false,
+      })
+
+      // Should be false because the credential has been tampered with
+      expect(result.verified).toBeFalsy()
+    })
+
+    it('(removing unmapped type)', async () => {
+      expect.assertions(1)
+
+      const signed = await jsigs.sign({...credential, type: [...credential.type, 'Unmapped']}, {
+        suite: new Secp256k1Signature({
+          key: new Secp256k1Key({
+            id: `${did}#primary`,
+            controller: didLongForm,
+            privateKeyHex: keys.primaryKey.privateKey,
+          }),
+        }),
+        documentLoader,
+        purpose: new AssertionProofPurpose({controller: didDoc}),
+        compactProof: false,
+      })
+
+      const result = await jsigs.verify({...signed, type: [...credential.type]}, {
         suite: new Secp256k1Signature({
           key: new Secp256k1Key({
             id: signed.proof.verificationMethod,
